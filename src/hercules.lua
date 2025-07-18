@@ -239,6 +239,28 @@ end
 os.exit(1)
 end
 
+-- Function to detect if running in PowerShell environment
+local function isPowerShell()
+    -- Check for PowerShell-specific environment variable
+    local psModulePath = os.getenv("PSModulePath")
+    if psModulePath then
+        return true
+    end
+    
+    -- Additional check: try to detect PowerShell by testing a PowerShell-specific command
+    local testCmd = 'powershell -Command "echo test" 2>nul'
+    local handle = io.popen(testCmd)
+    if handle then
+        local result = handle:read("*a")
+        handle:close()
+        if result and result:match("test") then
+            return true
+        end
+    end
+    
+    return false
+end
+
 local function main()
     if #arg < 1 then
         print(colors.red .. "Error: No input file specified" .. colors.reset)
@@ -360,9 +382,18 @@ local function main()
     if options.folder_mode then
         local find_command
         if package.config:sub(1,1) == "\\" then
-            -- windows
-            local pattern = input .. "\\*.lua"
-            find_command = string.format('dir %q /b /s 2>nul', pattern)
+            -- Windows environment - detect shell type and use appropriate command
+            local isPS = isPowerShell()
+            if isPS then
+                -- PowerShell environment - use powershell.exe to ensure compatibility
+                local pattern = input:gsub("/", "\\")
+                local ps_cmd = string.format('Get-ChildItem "%s" -Recurse -Filter "*.lua" | Select-Object -ExpandProperty FullName', pattern)
+                find_command = string.format('powershell -Command "%s"', ps_cmd)
+            else
+                -- CMD environment
+                local pattern = input:gsub("/", "\\") .. "\\*.lua"
+                find_command = string.format('cmd /c "dir \"%s\" /b /s 2>nul"', pattern)
+            end
         else
             -- mac/linux
             find_command = string.format('find %q -type f -name "*.lua"', input)

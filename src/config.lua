@@ -7,10 +7,10 @@ config.settings = {
     watermark_enabled = true,
     final_print = true,
     VirtualMachine = {
-        enabled = true,
+        enabled = false,
     },
     antitamper = {
-        enabled = true,
+        enabled = false,
     },
     control_flow = {
         enabled = true,
